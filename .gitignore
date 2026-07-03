@@ -1,8 +1,12 @@
 .next/
 node_modules/
 *.log
+.env
 .env.local
 dev.db
 dev.db-journal
 .DS_Store
 Thumbs.db
+
+.vercel
+.env*

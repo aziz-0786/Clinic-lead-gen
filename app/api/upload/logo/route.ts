@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentBusiness } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 
 // Stores logo as base64 data URI in the logoUrl field.
 // In production, swap this for S3/Cloudinary upload.
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const businessId = (session.user as any).businessId;
+  const business = await getCurrentBusiness();
+  if (!business) return NextResponse.json({ error: "No business configured" }, { status: 500 });
+  const businessId = business.id;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;

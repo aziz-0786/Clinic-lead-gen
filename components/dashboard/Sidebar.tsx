@@ -2,10 +2,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard, Users, BarChart3, Settings, MessageSquare,
-  LogOut, Stethoscope, ExternalLink, Menu, X,
+  Stethoscope, ExternalLink, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +16,8 @@ const NAV = [
   { href: "/dashboard/settings",            label: "Settings", icon: Settings },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ onNavigate, businessSlug }: { onNavigate?: () => void; businessSlug?: string }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const slug = (session?.user as any)?.businessSlug;
 
   return (
     <>
@@ -48,10 +45,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      <div className="p-3 border-t border-slate-700 space-y-0.5">
-        {slug && (
+      {businessSlug && (
+        <div className="p-3 border-t border-slate-700 space-y-0.5">
           <Link
-            href={`/demo/${slug}`}
+            href={`/demo/${businessSlug}`}
             target="_blank"
             onClick={onNavigate}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
@@ -59,15 +56,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             <ExternalLink className="h-4 w-4 shrink-0" />
             View Demo Page
           </Link>
-        )}
-        <button
-          onClick={() => { onNavigate?.(); signOut({ callbackUrl: "/login" }); }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          Sign out
-        </button>
-      </div>
+        </div>
+      )}
     </>
   );
 }
@@ -86,7 +76,7 @@ function Logo() {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ businessSlug }: { businessSlug?: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -123,7 +113,7 @@ export function Sidebar() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <NavLinks onNavigate={() => setOpen(false)} />
+            <NavLinks onNavigate={() => setOpen(false)} businessSlug={businessSlug} />
           </aside>
         </div>
       )}
@@ -133,7 +123,7 @@ export function Sidebar() {
         <div className="p-5 border-b border-slate-700">
           <Logo />
         </div>
-        <NavLinks />
+        <NavLinks businessSlug={businessSlug} />
       </aside>
     </>
   );

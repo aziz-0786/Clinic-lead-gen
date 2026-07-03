@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentBusiness } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -18,11 +17,10 @@ const UpdateSchema = z.object({
 });
 
 export async function GET(_req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const businessId = (session.user as any).businessId;
+  const current = await getCurrentBusiness();
+  if (!current) return NextResponse.json({ error: "No business configured" }, { status: 500 });
   const business = await prisma.business.findUnique({
-    where: { id: businessId },
+    where: { id: current.id },
     select: { id: true, slug: true, name: true, ownerName: true, email: true, city: true, phone: true, whatsappNumber: true, alertEmail: true, specialty: true, tier: true, brandColor: true, avgPatientValue: true, avgInquiryToBookingRate: true },
   });
   if (!business) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -30,9 +28,9 @@ export async function GET(_req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const businessId = (session.user as any).businessId;
+  const business = await getCurrentBusiness();
+  if (!business) return NextResponse.json({ error: "No business configured" }, { status: 500 });
+  const businessId = business.id;
 
   const body = await req.json();
   const parsed = UpdateSchema.safeParse(body);

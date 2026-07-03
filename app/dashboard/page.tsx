@@ -1,6 +1,4 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+import { getCurrentBusiness } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,9 +24,9 @@ function greeting() {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login"); // handles expired / invalid JWT gracefully
-  const businessId = (session.user as any).businessId;
+  const business = await getCurrentBusiness();
+  if (!business) return null;
+  const businessId = business.id;
 
   const now = new Date();
   // Rolling 30-day window — never resets to 0 on the 1st of a month
@@ -37,16 +35,13 @@ export default async function DashboardPage() {
   const sixtyDaysAgo = new Date(now);
   sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-  const [business, recentLeads, periodLeads, prevLeads] = await Promise.all([
-    prisma.business.findUnique({ where: { id: businessId } }),
+  const [recentLeads, periodLeads, prevLeads] = await Promise.all([
     prisma.lead.findMany({ where: { businessId }, orderBy: { createdAt: "desc" }, take: 5 }),
     // Current 30-day window
     prisma.lead.findMany({ where: { businessId, createdAt: { gte: thirtyDaysAgo } } }),
     // Previous 30-day window (for trend)
     prisma.lead.findMany({ where: { businessId, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
   ]);
-
-  if (!business) return null;
 
   // Current period KPIs
   const totalPeriod      = periodLeads.length;

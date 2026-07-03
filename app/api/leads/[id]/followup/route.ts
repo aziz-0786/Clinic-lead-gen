@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentBusiness } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 import { getTierFeatures } from "@/lib/tier";
 import { addDays } from "date-fns";
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const businessId = (session.user as any).businessId;
+  const business = await getCurrentBusiness();
+  if (!business) return NextResponse.json({ error: "No business configured" }, { status: 500 });
+  const businessId = business.id;
 
   const lead = await prisma.lead.findFirst({ where: { id: params.id, businessId } });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const business = await prisma.business.findUnique({ where: { id: businessId } });
-  if (!business) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const features = getTierFeatures(business.tier);
   if (!features.followUpAutomation) return NextResponse.json({ error: "Upgrade to Growth or Pro to use Follow-Up Sequences" }, { status: 403 });

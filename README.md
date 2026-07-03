@@ -1,18 +1,22 @@
 # ClinicLeads — AI Patient Inquiry Qualification Platform
 
-A multi-tenant SaaS platform for Indian clinics. Patients fill out a chatbot on a public landing page, get scored by intent (HIGH / MEDIUM / LOW), and the doctor/front-desk sees a live dashboard with alerts, kanban pipeline, and missed-opportunity reports.
+A SaaS platform for Indian clinics. Patients fill out a chatbot on a public landing page, get scored by intent (HIGH / MEDIUM / LOW), and the doctor/front-desk sees a live dashboard with alerts, kanban pipeline, and missed-opportunity reports.
 
-## Demo Accounts (pre-seeded)
+The `/dashboard` routes are unauthenticated and always show a single business,
+resolved by `lib/business.ts`: the one matching the `BUSINESS_SLUG` env var, or
+the oldest row in the `Business` table if that's unset. If you seed multiple
+demo businesses, set `BUSINESS_SLUG` to pick which one the dashboard serves.
 
-| Email | Password | Slug | Specialty | Tier |
-|---|---|---|---|---|
-| demo@smiledental.com | demo1234 | smile-dental-raipur | Dental | PRO |
-| demo@glowskin.com | demo1234 | glowskin-bangalore | Skin/Cosmetic | GROWTH |
-| demo@apollonagpur.com | demo1234 | apollo-multispecialty-nagpur | Multi-Specialty | STARTER |
+## Demo Businesses (pre-seeded, no login required)
+
+| Slug | Specialty | Tier |
+|---|---|---|
+| smile-dental-raipur | Dental | PRO |
+| glowskin-bangalore | Skin/Cosmetic | GROWTH |
+| apollo-multispecialty-nagpur | Multi-Specialty | STARTER |
 
 ## Routes
 
-- `/login` — clinic owner login
 - `/demo/[slug]` — public patient landing page with chatbot widget
 - `/dashboard` — KPI overview + recent leads
 - `/dashboard/leads` — table + kanban pipeline, emergency leads highlighted
@@ -23,36 +27,49 @@ A multi-tenant SaaS platform for Indian clinics. Patients fill out a chatbot on 
 
 ## Run in Development
 
+The database is Neon Postgres, linked to this project via the Vercel
+integration. Pull the real connection strings before doing anything else —
+Prisma's CLI (`generate`/`migrate`) only auto-loads `.env`, not `.env.local`,
+so use a single `.env` file locally to keep `next dev` and `npx prisma ...`
+reading the same values. `.env.example` documents every var.
+
 ```powershell
 # 1. Install dependencies (already done if you're reading this)
 npm install --legacy-peer-deps
 
-# 2. Create/reset the database and seed demo data
-$env:DATABASE_URL = "file:./dev.db"
-npx prisma db push
+# 2. Link this folder to the Vercel project (one-time) and pull real env vars
+npx vercel link
+npx vercel env pull .env
+
+# 3. Apply the schema to Neon and seed demo data
+npx prisma migrate deploy
 npx tsx prisma/seed.ts
 
-# 3. Start the dev server
+# 4. Start the dev server
 npm run dev
 ```
 
 Then open http://localhost:3000
 
-> The `.env.local` file already has all required values for local development. No changes needed.
-
 ## Reset the Database
 
 ```powershell
-$env:DATABASE_URL = "file:./dev.db"
-npm run db:reset
+npx prisma migrate reset
 ```
 
 ## Production Checklist
 
-- Set `NEXTAUTH_SECRET` to a strong random value (`openssl rand -base64 32`)
-- Change `DATABASE_URL` to a Postgres connection string and update `prisma/schema.prisma` provider to `postgresql`
+- In Vercel → Project → Settings → Environment Variables, confirm the Neon
+  integration set both `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED`
+  (direct) — `prisma/schema.prisma` requires both, and the build fails
+  without `DATABASE_URL_UNPOOLED` even though the app only queries through
+  `DATABASE_URL` at runtime
+- Set `APP_URL` to your production URL (used to build links in alert emails/WhatsApp messages)
+- Set `BUSINESS_SLUG` if more than one business exists in the database
 - Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` for real email alerts
 - Replace `lib/whatsapp.ts`'s `sendWhatsAppAlert` with your WhatsApp Business API call
+- The `/dashboard` routes have no authentication — put them behind Vercel
+  Password Protection, a proxy, or add your own gate before sharing the URL
 
 ## Intent Scoring
 

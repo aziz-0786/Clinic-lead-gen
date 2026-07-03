@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentBusiness } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, buildHighIntentEmailHtml } from "@/lib/email";
 import { sendWhatsAppAlert, buildHighIntentWhatsAppMessage } from "@/lib/whatsapp";
 import { getTierFeatures } from "@/lib/tier";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const businessId = (session.user as any).businessId;
+  const business = await getCurrentBusiness();
+  if (!business) return NextResponse.json({ error: "No business configured" }, { status: 500 });
+  const businessId = business.id;
 
   const { channel } = await req.json();
   const lead = await prisma.lead.findFirst({ where: { id: params.id, businessId } });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const business = await prisma.business.findUnique({ where: { id: businessId } });
-  if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
 
   const features = getTierFeatures(business.tier);
   let ok = false;
@@ -26,7 +22,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const html = buildHighIntentEmailHtml({
       clinicName: business.name, patientName: lead.name, patientPhone: lead.phone, patientEmail: lead.email ?? null,
       concernType: lead.concernType, urgency: lead.urgency, intentLabel: lead.intentLabel, intentScore: lead.intentScore,
-      leadUrl: `${process.env.NEXTAUTH_URL}/dashboard/leads/${lead.id}`,
+      leadUrl: `${process.env.APP_URL}/dashboard/leads/${lead.id}`,
     });
     const res = await sendEmail({ to: business.alertEmail, subject: `[MANUAL] Alert for ${lead.name}`, html });
     ok = res.ok;

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentBusiness } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 import { computeIntentScore } from "@/lib/scoring";
 import { getTierFeatures } from "@/lib/tier";
@@ -71,7 +70,7 @@ export async function POST(req: Request) {
       urgency: data.urgency,
       intentLabel: label,
       intentScore: score,
-      leadUrl: `${process.env.NEXTAUTH_URL}/dashboard/leads/${lead.id}`,
+      leadUrl: `${process.env.APP_URL}/dashboard/leads/${lead.id}`,
     });
     const { ok } = await sendEmail({ to: business.alertEmail, subject: `[${label} INTENT] New Inquiry — ${data.name}`, html });
     await prisma.alertLog.create({
@@ -94,10 +93,10 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const business = await getCurrentBusiness();
+  if (!business) return NextResponse.json({ error: "No business configured" }, { status: 500 });
 
-  const businessId = (session.user as any).businessId;
+  const businessId = business.id;
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const intent = searchParams.get("intent");

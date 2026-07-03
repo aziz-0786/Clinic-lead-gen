@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentBusiness } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const businessId = (session.user as any).businessId;
+  const business = await getCurrentBusiness();
+  if (!business) return NextResponse.json({ error: "No business configured" }, { status: 500 });
+  const businessId = business.id;
 
   const { searchParams } = new URL(req.url);
   const monthStr = searchParams.get("month") ?? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
@@ -14,12 +13,7 @@ export async function GET(req: Request) {
   const start = new Date(y, m - 1, 1);
   const end = new Date(y, m, 1);
 
-  const [leads, business] = await Promise.all([
-    prisma.lead.findMany({ where: { businessId, createdAt: { gte: start, lt: end } } }),
-    prisma.business.findUnique({ where: { id: businessId } }),
-  ]);
-
-  if (!business) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const leads = await prisma.lead.findMany({ where: { businessId, createdAt: { gte: start, lt: end } } });
 
   const totalLeads = leads.length;
   const byIntent = {

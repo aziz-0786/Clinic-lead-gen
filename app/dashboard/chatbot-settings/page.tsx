@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GripVertical, Plus, Trash2, Save, CheckCircle, ExternalLink, Upload, MessageCircle, X } from "lucide-react";
-import { useSession } from "next-auth/react";
 import Image from "next/image";
 
 type Question = {
@@ -19,8 +18,7 @@ type Question = {
 };
 
 export default function ChatbotSettingsPage() {
-  const { data: session } = useSession();
-  const slug = (session?.user as any)?.businessSlug;
+  const [slug, setSlug] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [brandColor, setBrandColor] = useState("#0891b2");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -43,6 +41,7 @@ export default function ChatbotSettingsPage() {
         setBrandColor(d.business?.brandColor ?? "#0891b2");
         setLogoUrl(d.business?.logoUrl ?? null);
         setClinicName(d.business?.name ?? "");
+        setSlug(d.business?.slug ?? null);
       });
   }, []);
 
