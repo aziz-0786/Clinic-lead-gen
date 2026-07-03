@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id                      String   @id @default(cuid())
+  slug                    String   @unique
+  name                    String
+  ownerName               String
+  email                   String   @unique
+  passwordHash            String
+  city                    String
+  phone                   String
+  whatsappNumber          String
+  alertEmail              String
+  specialty               String
+  tier                    String   @default("STARTER")
+  logoUrl                 String?
+  brandColor              String   @default("#0891b2")
+  avgPatientValue         Float    @default(2000)
+  avgInquiryToBookingRate Float    @default(30)
+  createdAt               DateTime @default(now())
+
+  leads            Lead[]
+  chatbotQuestions ChatbotQuestion[]
+  alertLogs        AlertLog[]
+}
+
+model ChatbotQuestion {
+  id                 String  @id @default(cuid())
+  businessId         String
+  order              Int
+  questionText       String
+  type               String
+  options            String?
+  mapsToIntentWeight Float   @default(0)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id              String    @id @default(cuid())
+  businessId      String
+  name            String
+  phone           String
+  email           String?
+  concernType     String
+  urgency         String
+  visitMode       String
+  patientType     String
+  hasInsurance    Boolean?
+  answers         String
+  intentLabel     String
+  intentScore     Int
+  status          String    @default("NEW")
+  source          String    @default("Website Chatbot")
+  notes           String?
+  createdAt       DateTime  @default(now())
+  lastContactedAt DateTime?
+  appointmentTime DateTime?
+
+  business          Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  followUpSequences FollowUpSequence[]
+  alertLogs         AlertLog[]
+}
+
+model FollowUpSequence {
+  id           String    @id @default(cuid())
+  leadId       String
+  day          Int
+  channel      String
+  templateText String
+  status       String    @default("pending")
+  scheduledFor DateTime
+  sentAt       DateTime?
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model AlertLog {
+  id         String   @id @default(cuid())
+  leadId     String
+  businessId String
+  channel    String
+  status     String
+  sentAt     DateTime @default(now())
+  payload    String
+
+  lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
